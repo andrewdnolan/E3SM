@@ -34,9 +34,9 @@ def buildlib(bldroot, installpath, case):
     # Define WW3 repository directories
     builddir = f"{exeroot}/wav"
     tmpdir = f"{builddir}/tmp"
-    repodir = f"{srcroot}/components/ww3/src/WW3"
+    repodir = f"{srcroot}/components/ww3/src/WW3/model/src"
 
-    libdir = os.path.join(bldroot, "wav")
+    libdir = os.path.join(bldroot, "cmake/wav")
     if not os.path.isdir(libdir):
         os.makedirs(libdir)
 
