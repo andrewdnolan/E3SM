@@ -33,6 +33,7 @@ def buildlib(bldroot, installpath, case):
         fd.write(f"{srcroot}/components/ww3/src/cpl\n")
 
     cmake_args = " -DSWITCH=E3SM"
+    cmake_args += " -DUSE_FTORCH=TRUE"
 
     return cmake_args
 

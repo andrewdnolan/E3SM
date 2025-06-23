@@ -339,8 +339,10 @@ macro(build_model COMP_CLASS COMP_NAME)
 
         set_property(SOURCE "${WW3_SRC_DIR}/w3initmd.F90" APPEND PROPERTY COMPILE_DEFINITIONS "__WW3_SWITCHES__=\'\'")
 
-        #add_executable(ww3_ounf "${WW3_SRC_DIR}/ww3_ounf.F90")
-        #target_link_libraries(ww3_ounf "${TARGET_NAME}")
+        if (USE_FTORCH)
+          target_link_libraries(${TARGET_NAME} PRIVATE FTorch::ftorch)
+        endif()
+
       endif()
       if (USE_KOKKOS)
         target_link_libraries (${TARGET_NAME} PRIVATE Kokkos::kokkos)
