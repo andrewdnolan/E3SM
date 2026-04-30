@@ -106,15 +106,48 @@ int ocnInit(MPI_Comm Comm ///< [in] ocean MPI communicator
 
 } // end ocnInit
 
-// Call init routines for remaining Omega modules
-int initOmegaModules(MPI_Comm Comm) {
+int ocnInit(MPI_Comm Comm,                 ///< [in] ocean MPI communicator
+            const int OcnId,               ///< [in] mct comp id for ocean
+            const std::string &ConfigFile, ///< [in] path to yaml config file
+            const std::string &LogFile,    ///< [in] path to log file
+            const TimeInstant &StartTime   ///< [in] simulation start time
+) {
 
-   // error and return codes
+   I4 Err = 0; // return error code
+
+   // Init the default machine environment based on input MPI communicator
+   MachEnv::init(Comm);
+   MachEnv *DefEnv = MachEnv::getDefault();
+
+   // Initialize Omega logging with coupler provided log file name
+   initLogging(DefEnv, LogFile);
+
+   // Read config file into Config object
+   Config("Omega");
+   Config::readAll(ConfigFile);
+   Config *OmegaConfig = Config::getOmegaConfig();
+
+   readTimingConfig();
+
+   // coupler decides the stop time
+   TimeInitParams TimeParams{StartTime, std::nullopt};
+
+   // initialize remaining Omega modules
+   Err = initOmegaModules(Comm, TimeParams);
+   if (Err != 0)
+      ABORT_ERROR("ocnInit: Error initializing Omega modules");
+
+   return Err;
+
+} // end ocnInit
+
+// Call init routines for remaining Omega modules
+// Internal helper — all module init after TimeStepper::init1 is called.
+// Called by both initOmegaModules overloads.
+static int initOmegaModulesImpl(MPI_Comm Comm) {
+
    int Err = 0;
 
-   // Initialize the default time stepper (phase 1) that includes the
-   // calendar, model clock and start/stop times and alarms
-   TimeStepper::init1();
    TimeStepper *DefStepper = TimeStepper::getDefault();
    Clock *ModelClock       = DefStepper->getClock();
 
@@ -212,7 +245,17 @@ int initOmegaModules(MPI_Comm Comm) {
 
    return Err;
 
-} // end initOmegaModules
+} // end initOmegaModulesImpl
+
+int initOmegaModules(MPI_Comm Comm) {
+   TimeStepper::init1();
+   return initOmegaModulesImpl(Comm);
+}
+
+int initOmegaModules(MPI_Comm Comm, const TimeInitParams &TParams) {
+   TimeStepper::init1(TParams);
+   return initOmegaModulesImpl(Comm);
+}
 
 } // end namespace OMEGA
 //===----------------------------------------------------------------------===//

@@ -448,6 +448,13 @@ add_omega_test(
     "-n;8"
 )
 
+add_omega_test(
+    COUPLED_DRIVER_TEST
+    testCoupledDriver.exe
+    drivers/CoupledDriverTest.cpp
+    "-n;8"
+)
+
 ##################
 # Tracers test
 ##################

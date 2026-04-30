@@ -13,6 +13,7 @@
 
 #include "Config.h"
 #include "TimeMgr.h"
+#include "TimeStepper.h"
 
 #include "mpi.h"
 
@@ -25,6 +26,14 @@ bool printTimingAllRanks();
 /// for each Omega module
 int ocnInit(MPI_Comm Comm);
 
+/// Initialize Omega with coupler provided parameters
+int ocnInit(MPI_Comm Comm,                 ///< [in] ocean MPI communicator
+            const int OcnId,               ///< [in] mct comp id for ocean
+            const std::string &ConfigFile, ///< [in] path to yaml config file
+            const std::string &LogFile,    ///< [in] path to log file
+            const TimeInstant &StartTime   ///< [in] simulation start time
+);
+
 /// Advance the model from starting from CurrTime until EndAlarm rings
 int ocnRun(TimeInstant &CurrTime);
 
@@ -33,6 +42,9 @@ int ocnFinalize(const TimeInstant &CurrTime);
 
 /// Initialize Omega modules needed to run ocean model
 int initOmegaModules(MPI_Comm Comm);
+
+/// Initialize Omega modules with coupler-provided time parameters
+int initOmegaModules(MPI_Comm Comm, const TimeInitParams &TParams);
 
 } // end namespace OMEGA
 
