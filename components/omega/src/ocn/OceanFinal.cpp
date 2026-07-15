@@ -18,6 +18,7 @@
 #include "OceanDriver.h"
 #include "OceanState.h"
 #include "PGrad.h"
+#include "SfcCoupling.h"
 #include "Tendencies.h"
 #include "TimeMgr.h"
 #include "TimeStepper.h"
@@ -40,6 +41,7 @@ int ocnFinalize(const TimeInstant &CurrTime ///< [in] current sim time
    if (TimeStepper::getDefault())
       IOStream::finalize(TimeStepper::getDefault()->getClock());
 
+   SfcCoupling::clear();
    Tracers::clear();
    TimeStepper::clear();
    PressureGrad::clear();
