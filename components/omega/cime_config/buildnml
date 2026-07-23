@@ -166,6 +166,13 @@ def _build_time_integration_config(default_time_integration, case):
 
     return time_integration
 
+def get_user_nl_list(case):
+    """
+    Omega uses yaml for its configuration, so return user_yml_omega
+
+    instead of user_nl_omega to avoid confusion with the old namelist system
+    """
+    return ["user_yml_omega"]
 
 def build_input_data_list(case, compname):
     """
