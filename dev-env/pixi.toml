@@ -1,0 +1,22 @@
+# E3SM development environment: Python dependencies of CIME commands,
+# component buildnml/buildlib scripts and EVV system tests.
+# Install with ./deploy.py; never `pixi add` on a deployed copy.
+[workspace]
+name = "e3sm-dev-env"
+version = "0.1.0"
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64"]
+requires-pixi = ">=0.50"
+
+[dependencies]
+python = "3.13.*"
+pyyaml = ">=6"
+evv4esm = "==0.6.2"
+netcdf4 = "*"
+numpy = "*"
+scipy = "*"
+pandas = "*"
+# matplotlib-base avoids the Qt/PySide6/LLVM stack that `matplotlib` pulls in
+matplotlib-base = "*"
+psutil = "*"
+pytest = "*"

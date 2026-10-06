@@ -1,0 +1,26 @@
+## Commments begining with ## are not included in the final script.
+## Use @variable@ to substitute variables from the build system.
+##
+# E3SM development environment @version@ (Python-only loader).
+# Usage: source @path@
+if [ ! -x "@bin@/python3" ]; then
+    echo "e3sm-dev-env: @bin@/python3 is missing; reinstall @version@" >&2
+    return 1
+fi
+if [ -n "${E3SM_DEV_ENV_BIN:-}" ]; then
+    PATH=$(printf '%s' ":$PATH:" | sed "s|:$E3SM_DEV_ENV_BIN:|:|g; s|^:||; s|:$||")
+fi
+export E3SM_DEV_ENV_BIN="@bin@"
+export E3SM_DEV_ENV_VERSION="@version@"
+export PATH="$E3SM_DEV_ENV_BIN:$PATH"
+if [ -n "${PYTHONHOME:-}${PYTHONPATH:-}" ]; then
+    echo "e3sm-dev-env: unsetting PYTHONHOME/PYTHONPATH" >&2
+    unset PYTHONHOME PYTHONPATH
+fi
+export PYTHONNOUSERSITE=1
+if [ -n "${PS1:-}" ]; then
+    if [ -z "${E3SM_DEV_ENV_OLD_PS1+x}" ]; then
+        export E3SM_DEV_ENV_OLD_PS1="$PS1"
+    fi
+    PS1="(e3sm-dev-env) ${E3SM_DEV_ENV_OLD_PS1}"
+fi
