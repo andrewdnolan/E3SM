@@ -1,25 +1,21 @@
 #!/usr/bin/env python3
 """
 Install the E3SM development environment from the committed pixi.toml and
-pixi.lock, and write Python-only loaders (sh and csh) for it.
+pixi.lock, and render shell loaders (sh and csh) using templates/ and deploy.cfg.
 
-Only the standard library is used, so this runs under any python3 >= 3.6,
-including system Pythons that are too old to run CIME itself. The only
-other requirement is a pixi executable; loading an installation needs
-neither pixi nor network access.
+Only the standard library is used, running on any python3 >= 3.6. A pixi
+executable is required for installation; loading requires neither pixi
+nor network access.
 
-Local installation (any user, any machine):
-
+Local installation:
     ./deploy.py --prefix ~/e3sm-dev-env
 
 Shared publication (maintainers):
-
     ./deploy.py --prefix /lcrc/soft/climate/e3sm-dev-env --shared \
         --group cels --set-latest
 
-Each version is installed in <prefix>/<version>, where the version comes from
-pixi.toml. Shared versions are made read-only and are never changed in place;
-publish a new version instead (to delete an old one, `chmod -R u+w` it first).
+Each version is installed in <prefix>/<version>. Shared versions are read-only;
+use --recreate to replace a local build, or bump the version in pixi.toml.
 """
 
 import argparse
@@ -36,25 +32,8 @@ from typing import List
 HERE = Path(__file__).resolve().parent
 
 
-def get_config_list(
-    config: configparser.ConfigParser, section: str, option: str
-) -> List[str]:
-    raw = config.get(section, option, fallback="")
-    return [item.strip() for item in raw.split(",") if item.strip()]
-
-
-def update_latest_symlinks(prefix: Path, version: str) -> None:
-    for name in ("load.sh", "load.csh"):
-        link = prefix / f"load_latest{Path(name).suffix}"
-        tmp = link.with_name(link.name + ".tmp")
-        if tmp.is_symlink() or tmp.exists():
-            tmp.unlink()
-        tmp.symlink_to(Path(version) / name)
-        tmp.replace(link)
-        print(f"{link} -> {os.readlink(link)}")
-
-
-def main():
+def main() -> None:
+    """Deploy the E3SM development environment based on CLI arguments."""
     args = parse_args()
     version = read_version(HERE / "pixi.toml")
     prefix = Path(args.prefix).expanduser().resolve()
@@ -101,7 +80,6 @@ def install(
     version: str, 
     execs_to_expose: List[str],
     environment: str = "default",
-    
 ) -> None:
     """
     Install E3SM dev env into `destination` using the given `pixi` executable.
@@ -115,7 +93,7 @@ def install(
     version : str
         Version string to be used in the installation.
     execs_to_expose : list of str
-        List of executable names to expose in the `python-bin` directory
+        List of executable names to expose in the `python-bin` directory.
     environment : str, optional
         Name of the pixi environment to install (default is "default").
     """
@@ -123,16 +101,17 @@ def install(
         shutil.copy2(HERE / name, destination)
 
     # A deployer working inside `pixi shell` must not redirect the install
-    env = {k: v 
-           for k, v in os.environ.items()
-           if not k.startswith("PIXI_") or k == "PIXI_CACHE_DIR"
+    env = {
+        k: v 
+        for k, v in os.environ.items()
+        if not k.startswith("PIXI_") or k == "PIXI_CACHE_DIR"
     }
     run([
         pixi, "install", 
-         "--locked", 
-         "--environment", environment,
-         "--manifest-path", destination / "pixi.toml"], 
-        env=env)
+        "--locked", 
+        "--environment", environment,
+        "--manifest-path", destination / "pixi.toml"
+    ], env=env)
 
     env_bin = destination / ".pixi" / "envs" / environment / "bin"
     bin_dir = destination / "python-bin"
@@ -147,11 +126,24 @@ def install(
         rendered = render(template.read_text(), mapping)
         output_path.write_text(rendered)
 
+
 def verify_installation(
     destination: Path,
     required_imports: List[str],
-    environment: str = "default"
+    environment: str = "default",
 ) -> None:
+    """
+    Verify the installed environment by running the verification script.
+
+    Parameters:
+    -----------
+    destination : Path
+        Path to the directory where the environment was installed.
+    required_imports : list of str
+        Module names that must be importable in the installed environment.
+    environment : str, optional
+        Name of the pixi environment to verify (default is "default").
+    """
     env = os.environ.copy()
     env.pop("PYTHONHOME", None)
     env.pop("PYTHONPATH", None)
@@ -166,13 +158,14 @@ def verify_installation(
         cmd,
         env=env,
         capture=True,
-        echo=f"verifying environment imports: {', '.join(required_imports)}"
+        echo=f"verifying environment imports: {', '.join(required_imports)}",
     )
     print(f"Verification passed (Python {out.strip()})")
 
 
 def set_shared_permissions(destination: Path, group: str = None) -> None:
-    """Make a shared installation group-owned, world-readable and immutable.
+    """
+    Make a shared installation group-owned, world-readable and immutable.
 
     Parameters:
     -----------
@@ -187,9 +180,36 @@ def set_shared_permissions(destination: Path, group: str = None) -> None:
     print(f"Set shared read-only permissions in {destination}")
 
 
-def force_remove(path: Path) -> None:
-    """Restore write permissions and delete directory tree, ignoring errors."""
+def update_latest_symlinks(prefix: Path, version: str) -> None:
+    """
+    Update load_latest symlinks to point to the newly installed version.
 
+    Parameters:
+    -----------
+    prefix : Path
+        Installation root directory containing version subdirectories.
+    version : str
+        Version string of the new target installation.
+    """
+    for name in ("load.sh", "load.csh"):
+        link = prefix / f"load_latest{Path(name).suffix}"
+        tmp = link.with_name(link.name + ".tmp")
+        if tmp.is_symlink() or tmp.exists():
+            tmp.unlink()
+        tmp.symlink_to(Path(version) / name)
+        tmp.replace(link)
+        print(f"{link} -> {os.readlink(link)}")
+
+
+def force_remove(path: Path) -> None:
+    """
+    Restore write permissions and delete a directory tree, ignoring errors.
+
+    Parameters:
+    -----------
+    path : Path
+        Path to the directory tree to remove.
+    """
     if path.exists():
         run(["chmod", "-R", "u+w", path])
         shutil.rmtree(path, ignore_errors=True)
@@ -242,9 +262,43 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+def get_config_list(
+    config: configparser.ConfigParser, section: str, option: str
+) -> List[str]:
+    """
+    Parse a comma-separated list of strings from a configuration section.
+
+    Parameters:
+    -----------
+    config : configparser.ConfigParser
+        Loaded configuration parser instance.
+    section : str
+        Section name in the configuration file.
+    option : str
+        Option name containing comma-separated items.
+
+    Returns:
+    --------
+    list of str
+        List of non-empty, stripped string values.
+    """
+    raw = config.get(section, option, fallback="")
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
 def read_version(manifest_path: Path) -> str:
     """
     Read the version string from a pixi manifest file (pixi.toml).
+
+    Parameters:
+    -----------
+    manifest_path : Path
+        Path to the pixi manifest file.
+
+    Returns:
+    --------
+    str
+        Parsed version string.
     """
     match = re.search(
         r'^version\s*=\s*"([^"]+)"', manifest_path.read_text(), re.M
@@ -259,6 +313,16 @@ def find_pixi(explicit: str = None) -> Path:
     Find a pixi executable to use. Either use the explicitly provided path,
     search in PATH, or check the default location (~/.pixi/bin/pixi). If none
     are found, exit with an error message.
+
+    Parameters:
+    -----------
+    explicit : str, optional
+        Explicit path to the pixi binary provided via command-line arguments.
+
+    Returns:
+    --------
+    Path
+        Path to the found executable pixi binary.
     """
     candidates = []
     if explicit:
@@ -304,14 +368,38 @@ def render(template_text: str, mapping: dict) -> str:
         var_name = match.group(1)
         if var_name not in mapping:
             sys.exit(
-                f"Missing replacemnt value for template variable: @{var_name}@"
+                f"Missing replacement value for template variable: @{var_name}@"
             )
         return str(mapping[var_name])
 
     return re.sub(r"@(\w+)@", _replace_var, text)
 
 
-def run(cmd: list, env: dict = None, capture: bool = False, echo: str = None):
+def run(
+    cmd: list,
+    env: dict = None,
+    capture: bool = False,
+    echo: str = None,
+) -> str:
+    """
+    Execute a shell command using subprocess and handle failures.
+
+    Parameters:
+    -----------
+    cmd : list
+        Command arguments list.
+    env : dict, optional
+        Environment variables dictionary.
+    capture : bool, optional
+        If True, capture and return stdout.
+    echo : str, optional
+        Custom description string to log instead of cmd.
+
+    Returns:
+    --------
+    str
+        Captured stdout if capture is True, otherwise None.
+    """
     cmd_str = [str(c) for c in cmd]
     print("+ " + (echo or " ".join(cmd_str)))
 
