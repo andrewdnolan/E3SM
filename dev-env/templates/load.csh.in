@@ -1,5 +1,5 @@
-## Commments begining with ## are not included in the final script.
-## Use @variable@ to substitute variables from the build system.
+## Comments beginning with ## are stripped from the rendered script.
+## Variables matching @var@ are substituted by deploy.py.
 ##
 # E3SM development environment @version@ (Python-only loader).
 # Usage: source @path@
