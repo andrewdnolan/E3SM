@@ -77,7 +77,7 @@ def main() -> None:
 def install(
     pixi: Path,
     destination: Path,
-    version: str, 
+    version: str,
     execs_to_expose: List[str],
     environment: str = "default",
 ) -> None:
@@ -102,13 +102,13 @@ def install(
 
     # A deployer working inside `pixi shell` must not redirect the install
     env = {
-        k: v 
+        k: v
         for k, v in os.environ.items()
         if not k.startswith("PIXI_") or k == "PIXI_CACHE_DIR"
     }
     run([
-        pixi, "install", 
-        "--locked", 
+        pixi, "install",
+        "--locked",
         "--environment", environment,
         "--manifest-path", destination / "pixi.toml"
     ], env=env)
@@ -405,7 +405,7 @@ def run(
 
     proc = subprocess.run(
         cmd_str,
-        env=env, 
+        env=env,
         stdout=subprocess.PIPE if capture else None,
         universal_newlines=True
     )
